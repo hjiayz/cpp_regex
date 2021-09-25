@@ -5,7 +5,8 @@ edition = "2018"
 build = "build.rs"
 authors = ["hjiayz <hjiayz@163.com>"]
 license = "MIT OR Apache-2.0"
-git = "https://github.com/hjiayz/cpp_regex.git"
+description = "cpp std::regex"
+repository = "https://github.com/hjiayz/cpp_regex.git"
 
 [dependencies]
 cpp = "0.5"
