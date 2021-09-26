@@ -3,10 +3,13 @@
 cpp std::regex
 test only
 ```rust
-    use cpp_regexp::RegExp;
-    assert!(RegExp::new("^hello$").test("hello"));
-    let mut regex = RegExp::new("^hello$");
-    regex.icase = true;
+    use cpp_regexp::{RegExp,Config};
+    assert!(RegExp::new("^hello$",Default::default()).test("hello"));
+    let config = Config{
+        icase:true,
+        ..Default::default()
+    };
+    let mut regex = RegExp::new("^hello$",config);
     assert!(regex.test("hellO"));
 ```
 
