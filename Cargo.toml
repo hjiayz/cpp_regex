@@ -9,7 +9,7 @@ description = "cpp std::regex"
 repository = "https://github.com/hjiayz/cpp_regex.git"
 
 [dependencies]
-cpp = "0.5"
+cxx = "1.0"
 
 [build-dependencies]
-cpp_build = "0.5"
+cxx-build = "1.0"
