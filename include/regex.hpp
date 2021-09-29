@@ -3,17 +3,19 @@
 #include <string>
 #include <regex>
 
-class Regex {
+class Regex
+{
 public:
     std::regex pattern;
     std::regex_constants::match_flag_type match_flag;
-    Regex(std::string const &s,std::regex_constants::syntax_option_type pflag,std::regex_constants::match_flag_type pmatch_flag);
+    Regex(std::string const &s, std::regex_constants::syntax_option_type pflag, std::regex_constants::match_flag_type pmatch_flag, std::string const &locale);
     bool test(std::string const &s) const;
-    std::unique_ptr<std::string> replace(std::string const &s,std::string const &replacement) const;
+    std::unique_ptr<std::string> replace(std::string const &s, std::string const &replacement) const;
+    rust::Vec<rust::String> regex_match(std::string const &s) const;
 };
 
 std::unique_ptr<Regex> new_regex(
-    std::string const &s, 
+    std::string const &s,
     bool icase,
     bool nosubs,
     bool optimize,
@@ -29,4 +31,5 @@ std::unique_ptr<Regex> new_regex(
     bool match_any,
     bool match_not_null,
     bool match_continuous,
-    bool match_prev_avail);
+    bool match_prev_avail,
+    std::string const &locale);

@@ -8,14 +8,26 @@
 //! ```
 //!     use cpp_regexp::{RegExp,Config};
 //!     assert!(RegExp::new("^hello$",Default::default()).unwrap().test("hello").unwrap());
+//!     let match_results = RegExp::new("^(he)(ll)(o)$",Default::default()).unwrap().regex_match("hello").unwrap();
+//!     assert!(match_results==["hello","he","ll","o"]);
 //!     let config = Config{
 //!         icase:true,
+//!         //UTF-8 only
+//!         locale:"es_US.UTF-8",
 //!         ..Default::default()
 //!     };
-//!     let mut regex = RegExp::new("hello",config).unwrap();
-//!     assert!(regex.test("hellO").unwrap());
+//!     let mut regex = RegExp::new("hello♥",config).unwrap();
+//!     assert!(regex.test("hellO♥").unwrap());
 //!     assert!(RegExp::new("^(((hello$",config).is_err());
-//!     assert!(regex.replace("hello world","good").unwrap()=="good world");
+//!     assert!(regex.replace("hello♥ world","good").unwrap()=="good world");
+//!     let config_es = Config{
+//!         icase:true,
+//!         locale:"es_ES.UTF-8",
+//!         ..Default::default()
+//!     };
+//!     let mut regex = RegExp::new("ñ",config_es).unwrap();
+//!     //not single character
+//!     assert!(regex.test("Ñ").unwrap()==false);
 //! ```
 
 use cxx::{let_cxx_string, Exception, UniquePtr};
@@ -43,9 +55,15 @@ mod ffi {
             match_not_null: bool,
             match_continuous: bool,
             match_prev_avail: bool,
+            locale: &CxxString,
         ) -> Result<UniquePtr<Regex>>;
-        fn test(&self, s: &CxxString) -> Result<bool>;
-        fn replace(&self, s: &CxxString, replacement: &CxxString) -> Result<UniquePtr<CxxString>>;
+        fn test(self: &Regex, s: &CxxString) -> Result<bool>;
+        fn replace(
+            self: &Regex,
+            s: &CxxString,
+            replacement: &CxxString,
+        ) -> Result<UniquePtr<CxxString>>;
+        fn regex_match(self: &Regex, s: &CxxString) -> Result<Vec<String>>;
     }
 }
 
@@ -66,7 +84,7 @@ pub enum ReplaceRule {
 }
 
 #[derive(Copy, Clone)]
-pub struct Config {
+pub struct Config<'a> {
     pub icase: bool,
     pub nosubs: bool,
     pub optimize: bool,
@@ -83,11 +101,12 @@ pub struct Config {
     pub match_continuous: bool,
     pub match_prev_avail: bool,
     pub replace_rule: ReplaceRule,
+    pub locale: &'a str,
 }
 
-impl Default for Config {
+impl Default for Config<'static> {
     #[inline]
-    fn default() -> Config {
+    fn default() -> Config<'static> {
         Config {
             icase: false,
             nosubs: false,
@@ -105,6 +124,7 @@ impl Default for Config {
             match_continuous: false,
             match_prev_avail: false,
             replace_rule: ReplaceRule::ECMAScript,
+            locale: "en_US.UTF-8",
         }
     }
 }
@@ -119,6 +139,7 @@ impl<'a> RegExp<'a> {
     pub fn new(exp: &'a str, config: Config) -> Result<RegExp<'a>, Exception> {
         let_cxx_string!(scxx = exp);
         let c = config;
+        let_cxx_string!(locale = c.locale);
         Ok(RegExp {
             exp: PhantomData,
             regexp: ffi::new_regex(
@@ -139,6 +160,7 @@ impl<'a> RegExp<'a> {
                 c.match_not_null,
                 c.match_continuous,
                 c.match_prev_avail,
+                &locale,
             )?,
         })
     }
@@ -152,5 +174,10 @@ impl<'a> RegExp<'a> {
         let_cxx_string!(scxx = s);
         let_cxx_string!(replacementcxx = replacement);
         Ok(ffi::Regex::replace(&self.regexp, &scxx, &replacementcxx)?.to_string())
+    }
+    #[inline]
+    pub fn regex_match(&self, s: &str) -> Result<Vec<String>, Exception> {
+        let_cxx_string!(scxx = s);
+        ffi::Regex::regex_match(&self.regexp, &scxx)
     }
 }
