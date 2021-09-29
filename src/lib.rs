@@ -3,13 +3,17 @@
 //! cpp std::regex
 //! - [x] test
 //! - [x] replace
-//! - [ ] match
-//! - [ ] match_all
+//! - [x] match
+//! - [x] match_all
 //! ```
 //!     use cpp_regexp::{RegExp,Config};
 //!     assert!(RegExp::new("^hello$",Default::default()).unwrap().test("hello").unwrap());
 //!     let match_results = RegExp::new("^(he)(ll)(o)$",Default::default()).unwrap().regex_match("hello").unwrap();
 //!     assert!(match_results==["hello","he","ll","o"]);
+//!     let match_all_results = RegExp::new("(he)(ll)(o)",Default::default()).unwrap().match_all(&"hello".repeat(2)).unwrap();
+//!     assert!(match_all_results[0]==["hello","he","ll","o"]);
+//!     assert!(match_all_results.len()==2);
+//!     assert!(match_all_results.iter().collect::<Vec<_>>()==[["hello","he","ll","o"],["hello","he","ll","o"]]);
 //!     let config = Config{
 //!         icase:true,
 //!         //UTF-8 only
@@ -58,12 +62,14 @@ mod ffi {
             locale: &CxxString,
         ) -> Result<UniquePtr<Regex>>;
         fn test(self: &Regex, s: &CxxString) -> Result<bool>;
-        fn replace(
+        fn replace(self: &Regex, s: &CxxString, replacement: &CxxString) -> Result<String>;
+        fn regex_match(self: &Regex, s: &CxxString) -> Result<Vec<String>>;
+        fn match_all(
             self: &Regex,
             s: &CxxString,
-            replacement: &CxxString,
-        ) -> Result<UniquePtr<CxxString>>;
-        fn regex_match(self: &Regex, s: &CxxString) -> Result<Vec<String>>;
+            results: &mut Vec<String>,
+            offsets: &mut Vec<usize>,
+        ) -> Result<()>;
     }
 }
 
@@ -173,11 +179,63 @@ impl<'a> RegExp<'a> {
     pub fn replace(&self, s: &str, replacement: &str) -> Result<String, Exception> {
         let_cxx_string!(scxx = s);
         let_cxx_string!(replacementcxx = replacement);
-        Ok(ffi::Regex::replace(&self.regexp, &scxx, &replacementcxx)?.to_string())
+        ffi::Regex::replace(&self.regexp, &scxx, &replacementcxx)
     }
     #[inline]
     pub fn regex_match(&self, s: &str) -> Result<Vec<String>, Exception> {
         let_cxx_string!(scxx = s);
         ffi::Regex::regex_match(&self.regexp, &scxx)
+    }
+    #[inline]
+    pub fn match_all(&self, s: &str) -> Result<MatchAll, Exception> {
+        let_cxx_string!(scxx = s);
+        let mut results = Vec::new();
+        let mut offsets = Vec::new();
+        ffi::Regex::match_all(&self.regexp, &scxx, &mut results, &mut offsets)?;
+        println!("{:?}", results);
+        println!("{:?}", offsets);
+        Ok(MatchAll { results, offsets })
+    }
+}
+
+pub struct MatchAll {
+    results: Vec<String>,
+    offsets: Vec<usize>,
+}
+
+impl MatchAll {
+    pub fn len(&self) -> usize {
+        self.offsets.len() - 1
+    }
+    pub fn iter(&self) -> MatchAllIter {
+        MatchAllIter {
+            inner: self,
+            pos: 0,
+        }
+    }
+}
+
+impl std::ops::Index<usize> for MatchAll {
+    type Output = [String];
+    fn index(&self, index: usize) -> &Self::Output {
+        return &self.results[self.offsets[index]..self.offsets[index + 1]];
+    }
+}
+
+pub struct MatchAllIter<'a> {
+    pub inner: &'a MatchAll,
+    pub pos: usize,
+}
+
+impl<'a> std::iter::Iterator for MatchAllIter<'a> {
+    type Item = &'a [String];
+    fn next(&mut self) -> Option<Self::Item> {
+        self.pos += 1;
+        if self.inner.offsets.len() > self.pos {
+            let result = &self.inner[self.pos - 1];
+            Some(result)
+        } else {
+            None
+        }
     }
 }

@@ -14,22 +14,42 @@ bool Regex::test(std::string const &s) const
   return std::regex_search(s, pattern, match_flag);
 }
 
-std::unique_ptr<std::string> Regex::replace(std::string const &s, std::string const &replacement) const
+rust::String Regex::replace(std::string const &s, std::string const &replacement) const
 {
-  return std::make_unique<std::string>(std::regex_replace(s, pattern, replacement, match_flag));
+  return rust::String(std::regex_replace(s, pattern, replacement, match_flag));
 }
 
 rust::Vec<rust::String> Regex::regex_match(std::string const &s) const
 {
-  std::smatch r;
-  std::regex_match(s, r, pattern, match_flag);
+  std::smatch match;
+  std::regex_match(s, match, pattern, match_flag);
   rust::Vec<rust::String> results;
-  for (size_t i = 0; i < r.size(); i++)
+  for (size_t i = 0; i < match.size(); i++)
   {
-    results.push_back(rust::String(r[i].str()));
+    results.push_back(rust::String(match[i].str()));
   }
   return results;
 };
+
+void Regex::match_all(std::string const &s,rust::Vec<rust::String> &results, rust::Vec<size_t> &offsets) const{
+  auto begin = std::sregex_iterator(s.begin(), s.end(),pattern,match_flag);
+  auto end = std::sregex_iterator();
+  size_t offset = 0;
+  offsets.push_back(offset);
+  for (auto i = begin; i != end; ++i)
+  {
+    std::smatch match = *i;
+    size_t size = match.size();
+    offset = offset + size;
+    offsets.push_back(offset);
+    for (size_t j = 0; j < size; j++)
+    {
+      std::string match_str = match[j].str(); 
+      results.push_back(rust::String(match_str));
+    }
+  }
+  return;
+}
 
 std::unique_ptr<Regex> new_regex(
     std::string const &s,
