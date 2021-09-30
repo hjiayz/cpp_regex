@@ -36,8 +36,17 @@
 
 use cxx::{let_cxx_string, Exception, UniquePtr};
 use std::marker::PhantomData;
+
 #[cxx::bridge]
 mod ffi {
+    struct MatchItem {
+        pub position: usize,
+        pub len: usize,
+    }
+    struct MatchGroup {
+        pub text: String,
+        pub items: Vec<MatchItem>,
+    }
     unsafe extern "C++" {
         include!("cpp_regexp/include/regex.hpp");
         type Regex;
@@ -63,13 +72,8 @@ mod ffi {
         ) -> Result<UniquePtr<Regex>>;
         fn test(self: &Regex, s: &CxxString) -> Result<bool>;
         fn replace(self: &Regex, s: &CxxString, replacement: &CxxString) -> Result<String>;
-        fn regex_match(self: &Regex, s: &CxxString) -> Result<Vec<String>>;
-        fn match_all(
-            self: &Regex,
-            s: &CxxString,
-            results: &mut Vec<String>,
-            offsets: &mut Vec<usize>,
-        ) -> Result<()>;
+        fn regex_match(self: &Regex, s: &CxxString) -> Result<MatchGroup>;
+        fn match_all(self: &Regex, s: &CxxString) -> Result<Vec<MatchGroup>>;
     }
 }
 
@@ -182,60 +186,94 @@ impl<'a> RegExp<'a> {
         ffi::Regex::replace(&self.regexp, &scxx, &replacementcxx)
     }
     #[inline]
-    pub fn regex_match(&self, s: &str) -> Result<Vec<String>, Exception> {
+    pub fn regex_match(&self, s: &str) -> Result<MatchGroup, Exception> {
         let_cxx_string!(scxx = s);
         ffi::Regex::regex_match(&self.regexp, &scxx)
     }
     #[inline]
-    pub fn match_all(&self, s: &str) -> Result<MatchAll, Exception> {
+    pub fn match_all(&self, s: &str) -> Result<Vec<MatchGroup>, Exception> {
         let_cxx_string!(scxx = s);
-        let mut results = Vec::new();
-        let mut offsets = Vec::new();
-        ffi::Regex::match_all(&self.regexp, &scxx, &mut results, &mut offsets)?;
-        println!("{:?}", results);
-        println!("{:?}", offsets);
-        Ok(MatchAll { results, offsets })
+        ffi::Regex::match_all(&self.regexp, &scxx)
     }
 }
 
-pub struct MatchAll {
-    results: Vec<String>,
-    offsets: Vec<usize>,
-}
+pub use ffi::{MatchGroup, MatchItem};
 
-impl MatchAll {
+impl MatchGroup {
+    #[inline]
     pub fn len(&self) -> usize {
-        self.offsets.len() - 1
+        self.items.len()
     }
-    pub fn iter(&self) -> MatchAllIter {
-        MatchAllIter {
+    #[inline]
+    pub fn iter(&self) -> MatchIter {
+        MatchIter {
             inner: self,
             pos: 0,
         }
     }
 }
 
-impl std::ops::Index<usize> for MatchAll {
-    type Output = [String];
+impl std::ops::Index<usize> for MatchGroup {
+    type Output = str;
+    #[inline]
     fn index(&self, index: usize) -> &Self::Output {
-        return &self.results[self.offsets[index]..self.offsets[index + 1]];
+        let item = &self.items[index];
+        let start = item.position - self.items[0].position;
+        let end = start + item.len;
+        return &self.text[start..end];
     }
 }
 
-pub struct MatchAllIter<'a> {
-    pub inner: &'a MatchAll,
+pub struct MatchIter<'a> {
+    pub inner: &'a MatchGroup,
     pub pos: usize,
 }
 
-impl<'a> std::iter::Iterator for MatchAllIter<'a> {
-    type Item = &'a [String];
+impl<'a> std::iter::Iterator for MatchIter<'a> {
+    type Item = &'a str;
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.pos += 1;
-        if self.inner.offsets.len() > self.pos {
-            let result = &self.inner[self.pos - 1];
+        if self.inner.len() > self.pos {
+            let result = &self.inner[self.pos];
+            self.pos += 1;
             Some(result)
         } else {
             None
         }
+    }
+}
+
+impl<S: AsRef<str>> PartialEq<&[S]> for MatchGroup {
+    #[inline]
+    fn eq(&self, other: &&[S]) -> bool {
+        self.iter().zip(other.iter()).all(|(a, b)| a == b.as_ref())
+    }
+}
+
+impl<S: AsRef<str>> PartialEq<[S]> for MatchGroup {
+    #[inline]
+    fn eq(&self, other: &[S]) -> bool {
+        self.iter().zip(other.iter()).all(|(a, b)| a == b.as_ref())
+    }
+}
+
+impl<S: AsRef<str>> PartialEq<[S]> for &MatchGroup {
+    #[inline]
+    fn eq(&self, other: &[S]) -> bool {
+        self.iter().zip(other.iter()).all(|(a, b)| a == b.as_ref())
+    }
+}
+
+impl<S: AsRef<str>, const N: usize> PartialEq<[S; N]> for MatchGroup {
+    #[inline]
+    fn eq(&self, other: &[S; N]) -> bool {
+        self.iter().zip(other.iter()).all(|(a, b)| a == b.as_ref())
+    }
+}
+
+impl<S: AsRef<str>, const N: usize> PartialEq<[S; N]> for &MatchGroup {
+    #[inline]
+    fn eq(&self, other: &[S; N]) -> bool {
+        self.iter().zip(other.iter()).all(|(a, b)| a == b.as_ref())
     }
 }

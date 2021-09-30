@@ -1,4 +1,5 @@
 #include "cpp_regexp/include/regex.hpp"
+#include "cpp_regexp/src/lib.rs.h"
 #include <iostream>
 #include <locale>
 
@@ -19,36 +20,46 @@ rust::String Regex::replace(std::string const &s, std::string const &replacement
   return rust::String(std::regex_replace(s, pattern, replacement, match_flag));
 }
 
-rust::Vec<rust::String> Regex::regex_match(std::string const &s) const
+MatchGroup Regex::regex_match(std::string const &s) const
 {
   std::smatch match;
   std::regex_match(s, match, pattern, match_flag);
-  rust::Vec<rust::String> results;
+  MatchGroup results;
+  if (match.empty()) {
+    results.text = rust::String("");
+    results.items = rust::Vec<MatchItem>();
+    return results;
+  }
+  results.text = rust::String(match[0].str());
   for (size_t i = 0; i < match.size(); i++)
   {
-    results.push_back(rust::String(match[i].str()));
+    MatchItem item;
+    item.position = match.position(i);
+    item.len = match[i].length();
+    results.items.push_back(item);
   }
   return results;
 };
 
-void Regex::match_all(std::string const &s,rust::Vec<rust::String> &results, rust::Vec<size_t> &offsets) const{
+rust::Vec<MatchGroup> Regex::match_all(std::string const &s) const{
   auto begin = std::sregex_iterator(s.begin(), s.end(),pattern,match_flag);
   auto end = std::sregex_iterator();
-  size_t offset = 0;
-  offsets.push_back(offset);
+  rust::Vec<MatchGroup> results;
   for (auto i = begin; i != end; ++i)
   {
     std::smatch match = *i;
-    size_t size = match.size();
-    offset = offset + size;
-    offsets.push_back(offset);
-    for (size_t j = 0; j < size; j++)
+    MatchGroup group;
+    group.text = rust::String(match[0].str());
+    for (size_t j = 0; j < match.size(); j++)
     {
-      std::string match_str = match[j].str(); 
-      results.push_back(rust::String(match_str));
+      MatchItem item;
+      item.position = match.position(j);
+      item.len = match[j].length();
+      group.items.push_back(item);
     }
+    results.push_back(group);
   }
-  return;
+  return results;
 }
 
 std::unique_ptr<Regex> new_regex(

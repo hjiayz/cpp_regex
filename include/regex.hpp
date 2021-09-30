@@ -3,6 +3,9 @@
 #include <string>
 #include <regex>
 
+struct MatchItem;
+struct MatchGroup;
+
 class Regex
 {
 public:
@@ -11,8 +14,8 @@ public:
     Regex(std::string const &s, std::regex_constants::syntax_option_type pflag, std::regex_constants::match_flag_type pmatch_flag, std::string const &locale);
     bool test(std::string const &s) const;
     rust::String replace(std::string const &s, std::string const &replacement) const;
-    rust::Vec<rust::String> regex_match(std::string const &s) const;
-    void match_all(std::string const &s,rust::Vec<rust::String> &results, rust::Vec<size_t> &offsets) const;
+    MatchGroup regex_match(std::string const &s) const;
+    rust::Vec<MatchGroup> match_all(std::string const &s) const;
 };
 
 std::unique_ptr<Regex> new_regex(
