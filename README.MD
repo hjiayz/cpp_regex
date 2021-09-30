@@ -10,7 +10,8 @@ cpp std::regex
     assert!(RegExp::new("^hello$",Default::default()).unwrap().test("hello").unwrap());
     let match_results = RegExp::new("^(he)(ll)(o)$",Default::default()).unwrap().regex_match("hello").unwrap();
     assert!(match_results==["hello","he","ll","o"]);
-    let match_all_results = RegExp::new("(he)(ll)(o)",Default::default()).unwrap().match_all(&"hello".repeat(2)).unwrap();
+    let hello2 = "hello".repeat(2);
+    let match_all_results = RegExp::new("(he)(ll)(o)",Default::default()).unwrap().match_all(&hello2).unwrap();
     assert!(match_all_results[0]==["hello","he","ll","o"]);
     assert!(match_all_results.len()==2);
     assert!(match_all_results.iter().collect::<Vec<_>>()==[["hello","he","ll","o"],["hello","he","ll","o"]]);

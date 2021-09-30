@@ -26,11 +26,9 @@ MatchGroup Regex::regex_match(std::string const &s) const
   std::regex_match(s, match, pattern, match_flag);
   MatchGroup results;
   if (match.empty()) {
-    results.text = rust::String("");
     results.items = rust::Vec<MatchItem>();
     return results;
   }
-  results.text = rust::String(match[0].str());
   for (size_t i = 0; i < match.size(); i++)
   {
     MatchItem item;
@@ -49,7 +47,6 @@ rust::Vec<MatchGroup> Regex::match_all(std::string const &s) const{
   {
     std::smatch match = *i;
     MatchGroup group;
-    group.text = rust::String(match[0].str());
     for (size_t j = 0; j < match.size(); j++)
     {
       MatchItem item;
