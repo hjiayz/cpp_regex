@@ -14,8 +14,8 @@ public:
     Regex(std::string const &s, std::regex_constants::syntax_option_type pflag, std::regex_constants::match_flag_type pmatch_flag, std::string const &locale);
     bool test(std::string const &s) const;
     rust::String replace(std::string const &s, std::string const &replacement) const;
-    MatchGroup regex_match(std::string const &s) const;
-    rust::Vec<MatchGroup> match_all(std::string const &s) const;
+    MatchGroup regex_match(rust::Str s) const;
+    rust::Vec<MatchGroup> match_all(rust::Str s) const;
 };
 
 std::unique_ptr<Regex> new_regex(

@@ -20,27 +20,29 @@ rust::String Regex::replace(std::string const &s, std::string const &replacement
   return rust::String(std::regex_replace(s, pattern, replacement, match_flag));
 }
 
-MatchGroup Regex::regex_match(std::string const &s) const
+MatchGroup Regex::regex_match(rust::Str s) const
 {
   std::smatch match;
-  std::regex_match(s, match, pattern, match_flag);
+  std::string cxxs = (std::string)s;
+  std::regex_match(cxxs, match, pattern, match_flag);
   MatchGroup results;
-  if (match.empty()) {
-    results.items = rust::Vec<MatchItem>();
+  if (match.empty())
+  {
+    results.items = rust::Vec<rust::Str>();
     return results;
   }
   for (size_t i = 0; i < match.size(); i++)
   {
-    MatchItem item;
-    item.position = match.position(i);
-    item.len = match[i].length();
+    rust::Str item(s.data() + match.position(i), match[i].length());
     results.items.push_back(item);
   }
   return results;
 };
 
-rust::Vec<MatchGroup> Regex::match_all(std::string const &s) const{
-  auto begin = std::sregex_iterator(s.begin(), s.end(),pattern,match_flag);
+rust::Vec<MatchGroup> Regex::match_all(rust::Str s) const
+{
+  std::string cxxs = (std::string)s;
+  auto begin = std::sregex_iterator(cxxs.begin(), cxxs.end(), pattern, match_flag);
   auto end = std::sregex_iterator();
   rust::Vec<MatchGroup> results;
   for (auto i = begin; i != end; ++i)
@@ -49,9 +51,7 @@ rust::Vec<MatchGroup> Regex::match_all(std::string const &s) const{
     MatchGroup group;
     for (size_t j = 0; j < match.size(); j++)
     {
-      MatchItem item;
-      item.position = match.position(j);
-      item.len = match[j].length();
+      rust::Str item(s.data() + match.position(j), match[j].length());
       group.items.push_back(item);
     }
     results.push_back(group);
