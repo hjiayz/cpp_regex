@@ -1,6 +1,6 @@
 [package]
 name = "cpp_regexp"
-version = "0.6.0"
+version = "0.6.1"
 edition = "2018"
 build = "build.rs"
 authors = ["hjiayz <hjiayz@163.com>"]
