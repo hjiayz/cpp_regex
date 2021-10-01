@@ -33,6 +33,8 @@
 //!     let mut regex = RegExp::new("ñ",config_es).unwrap();
 //!     //not single character
 //!     assert!(regex.test("Ñ").unwrap()==false);
+//!     //but you can
+//!     assert!(regex.test(&"Ñ".to_lowercase()).unwrap());
 //! ```
 
 use cxx::{let_cxx_string, Exception, UniquePtr};
